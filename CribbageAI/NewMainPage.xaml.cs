@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -125,18 +126,12 @@ namespace CribbageAI
         {
             try
             {
-                Logger log = null;
-                if (UseLog == true)
-                {
-                    log = new Logger();
-                    await log.Init();
-                    log.Start();
-                }
+
 
                 ((Button)sender).IsEnabled = false;
 
                 Window.Current.CoreWindow.PointerCursor = new Windows.UI.Core.CoreCursor(CoreCursorType.Wait, 1);
-                Tuple<int, int, double, string, double, double> ret = RunGames(Iterations, log, PlayerOne, PlayerTwo);
+                Tuple<int, int, double, string, double, double> ret = await RunGames(Iterations, (bool)UseLog, PlayerOne, PlayerTwo);
                 PlayerOneWin = ret.Item1;
                 PlayerTwoWin = ret.Item2;
                 MSPerGame = (double)Math.Round(ret.Item3, 3);
@@ -148,19 +143,19 @@ namespace CribbageAI
                 AverageScorePlayerTwo = Math.Round(ret.Item6, 2);
                 UpdateUI();
 
-                if (UseLog == true)
-                {
-                    int total = log.Records;
+                //if (UseLog == true)
+                //{
+                //    int total = log.Records;
 
-                    IProgress<int> progress = new Progress<int>((n) =>
-                    {
-                        _uiHint.Text = $"dumped {n} of {total} records in log";
-                    });
-                    await log.Stop(progress);
-                    _uiHint.Text = $"dumped {total} of {total} records in log";
-                }
+                //    IProgress<int> progress = new Progress<int>((n) =>
+                //    {
+                //        _uiHint.Text = $"dumped {n} of {total} records in log";
+                //    });
+                //    await log.Stop(progress);
+                //    _uiHint.Text = $"dumped {total} of {total} records in log";
+                //}
 
-                
+
             }
             finally
             {
@@ -182,18 +177,27 @@ namespace CribbageAI
         /// <param name="playerTwo"></param>
         /// <returns></returns>
 
-        private Tuple<int, int, double, string, double, double> RunGames(int iterations, Logger logger, AvailablePlayer playerOne, AvailablePlayer playerTwo)
+        private async Task<Tuple<int, int, double, string, double, double>> RunGamesAsyncOld(int iterations, bool useLog, AvailablePlayer playerOne, AvailablePlayer playerTwo)
         {
 
 
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            
+
             ConcurrentBag<Game> gameBag = new ConcurrentBag<Game>();
             bool playerOneStarts = true;
-            
 
-            Parallel.For(0, iterations, i =>
+            //
+            //  this has to happen on the main thread, so it can't happen inside the worker threads
+            //
+            //  this lets us put the documents in whatever location we want instead of inside the private storage area for the app, which is burried pretty deep in the
+            //  disk heirarchy and hard to get to.  You only have to do this once per machine though.
+            string content = "After clicking on \"Close\" pick the default location for all your CribbageAi saved state";
+            StorageFolder folder = await StaticHelpers.GetSaveFolder(content, "CribbageAI");
+
+            Debug.WriteLine("Starting Parallel.For");
+
+            Parallel.For(0, iterations, async i =>
             {
                 IPlayer player1 = (IPlayer)Activator.CreateInstance(playerOne.GameType);
                 player1.Init(playerOne.Parameters);
@@ -203,9 +207,9 @@ namespace CribbageAI
                 player2.Init(playerTwo.Parameters);
                 player2.PlayerAlgorithm = playerTwo.PlayerAlgorithm;
 
-                
-                Game game = new Game(i, logger, player1, player2, playerOneStarts);
 
+                Game game = new Game(i, player1, player2, playerOneStarts);
+                await game.Init(useLog, folder);
 
                 //
                 //  alternate who deals - looks like if you use the same algorithm, dealer *loses* 60% of the time!
@@ -223,14 +227,14 @@ namespace CribbageAI
 
 
                 gameBag.Add(game);
-                game.PlayGame();
+                await game.PlayGame();
 
 
 
             });
 
             watch.Stop();
-
+            Debug.WriteLine("Finished Parallel.For");
 
 
             int totalP1Score = 0;
@@ -262,6 +266,123 @@ namespace CribbageAI
 
 
             return Tuple.Create(p1Win, p2Win, msPerGame, FormatTime(elapsedMs), totalP1Score / (double)iterations, totalP2Score / (double)iterations);
+
+
+
+        }
+
+
+        private async Task<Tuple<int, int, double, string, double, double>> RunGames(int iterations, bool useLog, AvailablePlayer playerOne, AvailablePlayer playerTwo)
+        {
+
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
+
+            ConcurrentBag<Game> gameBag = new ConcurrentBag<Game>();
+            ConcurrentBag<Task> taskBag = new ConcurrentBag<Task>();
+            bool playerOneStarts = true;
+
+            //
+            //  this has to happen on the main thread, so it can't happen inside the worker threads
+            //
+            //  this lets us put the documents in whatever location we want instead of inside the private storage area for the app, which is burried pretty deep in the
+            //  disk heirarchy and hard to get to.  You only have to do this once per machine though.
+            string content = "After clicking on \"Close\" pick the default location for all your CribbageAi saved state";
+            StorageFolder folder = await StaticHelpers.GetSaveFolder(content, "CribbageAI");
+
+            Debug.WriteLine("Starting Parallel.For");
+
+            //
+            //  this uses Parallel.For to create 1 thread per processor.  Each thread creates a tasks and starts running it.
+            //  The task runs a game to completion, logging everything to a file. I do it this way so that I can wait for the 
+            //  logs to finish writing -- I found that if I did it outside of a Task list, it would finish the log writes async
+            Parallel.For(0, iterations, i =>
+            {
+                taskBag.Add(Task.Run(async () =>
+                {
+                    IPlayer player1 = (IPlayer)Activator.CreateInstance(playerOne.GameType);
+                    player1.Init(playerOne.Parameters);
+                    player1.PlayerAlgorithm = playerOne.PlayerAlgorithm;
+
+                    IPlayer player2 = (IPlayer)Activator.CreateInstance(playerTwo.GameType);
+                    player2.Init(playerTwo.Parameters);
+                    player2.PlayerAlgorithm = playerTwo.PlayerAlgorithm;
+
+
+                    Game game = new Game(i, player1, player2, playerOneStarts);
+                    await game.Init(useLog, folder);
+
+                    //
+                    //  alternate who deals - looks like if you use the same algorithm, dealer *loses* 60% of the time!
+                    if ((bool)AlternateWhoStarts)
+                    {
+                        if (playerOneStarts)
+                        {
+                            playerOneStarts = false;
+                        }
+                        else
+                        {
+                            playerOneStarts = true;
+                        }
+                    }
+
+
+                    gameBag.Add(game);
+                    await game.PlayGame();
+                }
+                ));
+
+
+            });
+
+            //
+            //  wait for all the games to complete -- this includes the log writes
+            Task.WaitAll(taskBag.ToArray());
+            watch.Stop();
+
+
+            Debug.WriteLine("Finished Parallel.For");
+
+            //
+            //  add up some stats
+            int totalP1LostScore = 0;
+            int totalP2LostScore = 0;
+            var elapsedMs = watch.ElapsedMilliseconds;
+
+            double msPerGame = elapsedMs / (double)iterations;
+
+
+
+            int p1Win = 0;
+            int p2Win = 0;
+
+            foreach (var game in gameBag)
+            {
+                if (game == null)
+                    continue;
+                //
+                //  this calculates the number of times each player one and the average of their *losing* score
+                //
+                if (game.PlayerOne.IPlayer.Winner)
+                {
+                    totalP2LostScore += game.PlayerTwo.Score;
+                    p1Win++;
+                }
+                else
+                {
+                    p2Win++;
+                    totalP1LostScore += game.PlayerOne.Score;
+                }
+
+
+
+
+            }
+
+
+
+            return Tuple.Create(p1Win, p2Win, msPerGame, FormatTime(elapsedMs), totalP1LostScore / (double)(p2Win), totalP2LostScore / (double)(p1Win)); // of course, p1win == p2Loss
 
 
 
