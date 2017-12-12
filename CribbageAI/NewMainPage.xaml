@@ -1,0 +1,92 @@
+﻿<Page
+    x:Class="CribbageAI.NewMainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CribbageAI"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <DataTemplate x:Key="PlayerTemplate" x:DataType="local:AvailablePlayer" >
+            <TextBlock Text="{x:Bind Description}"  />
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="475"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="100*"/>
+            <RowDefinition Height="10"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="1" Grid.Column="1">
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0" Grid.Row="1" Grid.ColumnSpan="1" >
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Player 1" TextWrapping="Wrap" VerticalAlignment="Top" Width="115"/>
+                <ComboBox HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" Width="326" 
+                      ItemsSource="{x:Bind Path=AllPlayers, Mode=OneTime}" ItemTemplate="{StaticResource PlayerTemplate}"
+                      SelectedItem="{x:Bind PlayerOne, Mode=TwoWay, Converter={StaticResource ObjectToObjectValueConverter}}"/>
+
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0" Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1">
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Player 2 " TextWrapping="Wrap" VerticalAlignment="Top" Width="115"/>
+                <ComboBox HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" Width="326" 
+                       ItemsSource="{x:Bind Path=AllPlayers, Mode=OneTime}" ItemTemplate="{StaticResource PlayerTemplate}"
+                       SelectedItem="{x:Bind PlayerTwo, Mode=TwoWay, Converter={StaticResource ObjectToObjectValueConverter}}"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0"  Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1">
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Iterations " TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBox Text="{x:Bind Iterations, Mode=TwoWay, Converter={StaticResource IntToStringConverter}, FallbackValue=10000}" Width="250" GotFocus="TextBoxGotFocus" HorizontalAlignment="Right" Margin="10,0,0,0"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0"  Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1">
+                <CheckBox Content="Alternate Who Starts" IsChecked="{x:Bind AlternateWhoStarts, FallbackValue=true, Mode=TwoWay}"  HorizontalAlignment="Right" Margin="10,0,0,0"/>
+                <CheckBox Content="Log" IsChecked="{x:Bind UseLog, FallbackValue=true, Mode=TwoWay}"  HorizontalAlignment="Right" Margin="10,0,0,0"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Clear" Click="OnClear" Width="100" Margin="10, 0 ,0 ,0"/>
+                <Button Content="Go" Click="OnGo" Width="100" Margin="10, 0 ,0 ,0"/>
+            </StackPanel>
+            
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0" Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1" >
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Player 1 Win " TextWrapping="Wrap" VerticalAlignment="Top" Width="100"/>
+                <TextBox Text="{x:Bind PlayerOneWin, Mode=TwoWay, Converter={StaticResource IntToStringConverter}, FallbackValue=10000}" Width="110" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Player 2 Win " TextWrapping="Wrap" VerticalAlignment="Top" Width="100"/>
+                <TextBox Text="{x:Bind PlayerTwoWin, Mode=TwoWay, Converter={StaticResource IntToStringConverter}, FallbackValue=10000}" Width="110" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0" Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1" >
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Player 1 Win %" TextWrapping="Wrap" VerticalAlignment="Top" Width="100"/>
+                <TextBox Text="{x:Bind PlayerOneWinPercent, Mode=TwoWay, Converter={StaticResource DoubleToStringConverter}, FallbackValue=10000}" Width="110" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Player 2 Win %" TextWrapping="Wrap" VerticalAlignment="Top" Width="100"/>
+                <TextBox Text="{x:Bind PlayerTwoWinPercent, Mode=TwoWay, Converter={StaticResource DoubleToStringConverter}, FallbackValue=10000}" Width="110" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0" Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1" >
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="P1 Ave Score" TextWrapping="Wrap" VerticalAlignment="Top" Width="100"/>
+                <TextBox Text="{x:Bind AverageScorePlayerOne, Mode=TwoWay, Converter={StaticResource DoubleToStringConverter}, FallbackValue=0}" Width="110" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="P2 Ave Score" TextWrapping="Wrap" VerticalAlignment="Top" Width="100"/>
+                <TextBox Text="{x:Bind AverageScorePlayerTwo, Mode=TwoWay, Converter={StaticResource DoubleToStringConverter}, FallbackValue=0}" Width="110" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0"  Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1">
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Time Per game (ms) " TextWrapping="Wrap" VerticalAlignment="Top" Width="154"/>
+                <TextBox Text="{x:Bind MSPerGame, Mode=TwoWay, Converter={StaticResource DoubleToStringConverter}, FallbackValue=430.0}" Width="200" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Background="Gray" Margin="0,10,0,0"  Grid.Row="2" Grid.ColumnSpan="1" Grid.RowSpan="1">
+                <TextBlock HorizontalAlignment="Left" Height="35" Margin="10,0,0,0" Text="Wall clock Time " TextWrapping="Wrap" VerticalAlignment="Top" Width="154"/>
+                <TextBox Text="{x:Bind WallClocktime, Mode=TwoWay, FallbackValue=}" Width="200" HorizontalAlignment="Right" Margin="10,0,0,0" IsReadOnly="True"/>
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Name="_uiHint" />
+            </StackPanel>
+
+        </StackPanel>
+    </Grid>
+</Page>

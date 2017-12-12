@@ -1,0 +1,24 @@
+﻿<Application
+    x:Class="CribbageAI.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CribbageAI"
+    RequestedTheme="Dark">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <local:ObjectToObjectValueConverter x:Key="ObjectToObjectValueConverter" />
+            <local:ScoreIntToStringConverter x:Key="ScoreIntToStringConverter" />
+            <local:IntToStringConverter x:Key="IntToStringConverter" />
+            <local:IntToStringConverter x:Key="DoubleToStringConverter" />
+            <local:NullToBoolConverter x:Key="NullToBoolConverter" />
+            <local:StorageFileToString x:Key="StorageFileToString" />
+            <local:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
+            <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <local:StringToIntListConverter x:Key="StringToIntListConverter" />
+            <local:StringToImageBrushConverter x:Key="StringToImageBrushConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+
+</Application>
+
