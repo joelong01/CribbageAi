@@ -17,7 +17,7 @@ namespace CribbageAI
 {
     interface ILog
     {
-        void AddLogLine(int gameID, int sequence, GameState state, LogType logType, PlayerName name, string line);
+        void AddLogLineQueued(int gameID, int sequence, GameState state, LogType logType, PlayerName name, string line);
     }
 
     public enum LogType { DealerHand, NonDealerHand, SharedCard, DealerCrib, NonDealerCrib, Count, AddScore, ScoreHand, ScoreCrib, CurrentScore, Winner, PlayCountCard };
@@ -64,14 +64,16 @@ namespace CribbageAI
            
         }
 
-        public async Task Init()
+        public async Task Init(int gameID, StorageFolder folder)
         {
-            string saveFileName = DateTime.Now.ToString("hh_mm_ss dd_MM_yyyy") + ".cailog";
-            string content = "After clicking on \"Close\" pick the default location for all your CribbageAi saved state";
-            _folder = await StaticHelpers.GetSaveFolder(content, "CribbageAI");
+            _folder = folder;
+            string saveFileName = String.Format($"{gameID}__{DateTime.Now.ToString("hh_mm_ss dd_MM_yyyy")}.cailog");            
             _file = await _folder.CreateFileAsync(saveFileName, CreationCollisionOption.ReplaceExisting);
-            string s = "GameID\tSequence\tGamesState\tAlgorithm\tLogType\tLine\r\n";
-            await FileIO.AppendTextAsync(_file, s);
+            if (gameID == 0)
+            {
+                string s = "GameID\tSequence\tGamesState\tAlgorithm\tLogType\tLine\r\n";
+                await FileIO.AppendTextAsync(_file, s);
+            }
         }
 
         public int Records
@@ -82,11 +84,34 @@ namespace CribbageAI
             }
         }
         
-        public void AddLogLine(int gameID, int sequence, GameState state, LogType logType, PlayerName name, string line)
+        public void AddLogLineQueued(int gameID, int sequence, GameState state, LogType logType, PlayerName name, string line)
         {
             _log.Enqueue(new LogLine(gameID, sequence, state, logType, name, line));
         }
 
+        public async Task AddLogLine(int gameID, int sequence, GameState state, LogType logType, PlayerName name, string line)
+        {
+            string s = "";
+            if (_file == null)
+                return;
+            s = String.Format($"{gameID}\t{sequence}\t{state}\t{name}\t{logType}\t{line}\r");
+            
+            try
+            {
+                await FileIO.AppendTextAsync(_file, s);
+
+            }
+            catch (Exception exception)
+            {
+
+                string error = StaticHelpers.GetErrorMessage($"Error saving to file\n{_file.Path}\n writing\n {s}", exception);
+                MessageDialog dlg = new MessageDialog(error);
+                await dlg.ShowAsync();
+
+            }
+        }
+
+        
         public void Start()
         {
             TimeSpan period = TimeSpan.FromSeconds(5);
@@ -145,22 +170,21 @@ namespace CribbageAI
 
         public async Task AppendPersistentLog(LogLine line)
         {
-            
+            string s = "";
             if (_file == null)
                 return;
+
+            s = String.Format($"{line}\r\n");
             try
             {
-                string s = String.Format($"{line}\r\n");
-
                 await FileIO.AppendTextAsync(_file, s);
-
 
             }
             catch (Exception exception)
             {
 
-                string s = StaticHelpers.GetErrorMessage($"Error saving to file", exception);
-                MessageDialog dlg = new MessageDialog(s);
+                string error = StaticHelpers.GetErrorMessage($"Error saving to file\n{_file.Path}\n writing\n {s}", exception);
+                MessageDialog dlg = new MessageDialog(error);
                 await dlg.ShowAsync();
 
             }
