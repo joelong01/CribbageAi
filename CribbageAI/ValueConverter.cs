@@ -26,7 +26,10 @@ namespace CribbageAI
         {
             try
             {
-                return Int32.Parse((string)value);
+                if (Int32.TryParse((string)value, out int ret))
+                    return ret;
+
+                return 0;
             }
             catch
             {
@@ -46,7 +49,10 @@ namespace CribbageAI
         {
             try
             {
-                return Double.Parse((string)value);
+                if (Double.TryParse((string)value, out double ret))
+                    return ret;
+
+                return 0.0;
             }
             catch
             {
