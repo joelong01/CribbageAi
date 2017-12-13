@@ -10,7 +10,7 @@
             <local:ObjectToObjectValueConverter x:Key="ObjectToObjectValueConverter" />
             <local:ScoreIntToStringConverter x:Key="ScoreIntToStringConverter" />
             <local:IntToStringConverter x:Key="IntToStringConverter" />
-            <local:IntToStringConverter x:Key="DoubleToStringConverter" />
+            <local:DoubleToStringConverter x:Key="DoubleToStringConverter" />
             <local:NullToBoolConverter x:Key="NullToBoolConverter" />
             <local:StorageFileToString x:Key="StorageFileToString" />
             <local:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
