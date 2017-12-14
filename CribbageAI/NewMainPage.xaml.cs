@@ -237,11 +237,11 @@ namespace CribbageAI
             {
                 taskBag.Add(Task.Run(async () =>
                 {
-                    IPlayer player1 = (IPlayer)Activator.CreateInstance(playerOne.GameType);
+                    Player player1 = (Player)Activator.CreateInstance(playerOne.GameType);
                     player1.Init(playerOne.Parameters);
                     player1.PlayerAlgorithm = playerOne.PlayerAlgorithm;
 
-                    IPlayer player2 = (IPlayer)Activator.CreateInstance(playerTwo.GameType);
+                    Player player2 = (Player)Activator.CreateInstance(playerTwo.GameType);
                     player2.Init(playerTwo.Parameters);
                     player2.PlayerAlgorithm = playerTwo.PlayerAlgorithm;
 
@@ -295,7 +295,7 @@ namespace CribbageAI
                 //
                 //  this calculates the number of times each player one and the average of their *losing* score
                 //
-                if (game.PlayerOne.IPlayer.Winner)
+                if (game.PlayerOne.Winner)
                 {
                     totalP2LostScore += game.PlayerTwo.Score;
                     stats.PlayerOneWin++;
