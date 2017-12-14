@@ -71,7 +71,7 @@ namespace Cards
         }
         public Suit Suit { get; set; } = Suit.Uninitialized;
         public CardOrdinal Ordinal { get; set; } = CardOrdinal.Uninitialized;
-        public PlayerState Owner { get; set; } = null;
+        public Player Owner { get; set; } = null;
 
         public override string ToString()
         {

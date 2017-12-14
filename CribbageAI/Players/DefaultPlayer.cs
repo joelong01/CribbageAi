@@ -6,48 +6,14 @@ using System.Threading.Tasks;
 using Cards;
 using Facet.Combinatorics;
 using CribbageAI.Cards;
+using System.Diagnostics;
 
 namespace CribbageAI
 {
 
-    public enum PlayerAlgorithm { Easy, Hard, Random, ImprovedCounting, None };
-    public enum PlayerName { PlayerOne, PlayerTwo, Uninitialized, None };
 
-    public interface IPlayer
-    {
-        List<Card> SelectCribCards(List<Card> hand, bool yourCrib);
-        Card GetCountCard(List<Card> playedCards, List<Card> uncountedCards, int currentCount);
-        string Description { get; set; }
-        PlayerName PlayerName { get; set; }
-        bool Winner { get; set; }
-        PlayerAlgorithm PlayerAlgorithm { get; set; }
-        void Init(string parameters);
-    }
 
-    public class BasePlayer : IPlayer
-    {
-        public string Description { get; set; }
-        public PlayerName PlayerName { get; set; }
-        public bool Winner { get; set; }
-        public PlayerAlgorithm PlayerAlgorithm { get; set; }
-
-        public virtual Card GetCountCard(List<Card> playedCards, List<Card> uncountedCards, int currentCount)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void Init(string parameters)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual List<Card> SelectCribCards(List<Card> hand, bool yourCrib)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class DefaultPlayer : BasePlayer
+    public class DefaultPlayer : Player
     {
         public bool UseDropTable { get; set; } = false;
         public DefaultPlayer() { }
@@ -71,6 +37,10 @@ namespace CribbageAI
             Card maxCard = null;
             int score = 0;
 
+            //
+            // if we have only 1 card, play it if we legally can
+            //  NOTE: we assume that the Player correctly returns a legal card!
+            //
             if (uncountedCards.Count == 1)
             {
                 if (uncountedCards[0].Value + currentCount <= 31)
@@ -94,13 +64,19 @@ namespace CribbageAI
             if (maxScore == -1)
                 return null; // we have no valid card to play
 
+            if (maxScore > 0)
+            {
+                // if we can play a card to score points, play it
+                return maxCard;
+            }
 
             if (maxScore == 0) // there isn't a card for us to play that generates points
             {
                 //
                 //  play a card that we have a pair so we can get 3 of a kind - as long as it isn't a 5 and the 3 of a kind makes > 31
                 //
-
+                //  this optimization changes the average count score from 2.59948 to 2.66909 over 100,000 games
+                //
                 for (int i = 0; i < uncountedCards.Count - 1; i++)
                 {
 
@@ -119,6 +95,8 @@ namespace CribbageAI
                 //
                 //  make the right choice if assuming they'll play a 10
                 //
+                //  this optimization changes the average count score from 2.64235 to 2.67764 over 100,000 games
+                //
                 Combinations<Card> combinations = new Combinations<Card>(uncountedCards, 2); // at most 6 of these: 4 choose 2
                 foreach (List<Card> cards in combinations)
                 {
@@ -131,7 +109,19 @@ namespace CribbageAI
 
                 }
 
+                // tried returning the smallest legal card -- no difference
+                // tried returning the highest legal card -- no difference
+
             }
+
+            // tried to generate a random card if currentCount == 0 -- no difference
+
+            
+            //
+            //  this one is important -- it basically says "if you can't score any points, induce a 3 of a kind, or try to create a run play whatever card we ened up with.
+            //  UNLESS IT IS A FIVE!...then pick a different one.  over the course of 100,000 games, this is the difference between 2.61423 and 2.71498 ave counting points
+            //  turns out that if we don't do this, then both players get ~2.65 points / counting session - e.g. if one is not worried about dropping 5's and the other is, it
+            //  adds about .1/count and if both are being silly and dropping 5's then both get about .04 ave point boost.  still a good optimization when playing humans.
 
             if (maxCard.Rank == 5)
             {
@@ -204,7 +194,7 @@ namespace CribbageAI
                 Description = "Default player using Drop Table";
             }
             else
-            
+
                 Description = "Default player no Drop Table";
         }
     }

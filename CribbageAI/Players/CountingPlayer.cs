@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace CribbageAI.Players
 {
-    class CountingPlayer : BasePlayer
+    class CountingPlayer : Player
     {
 
         public CountingPlayer() { }

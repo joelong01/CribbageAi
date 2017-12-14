@@ -111,6 +111,7 @@
     <Compile Include="NewMainPage.xaml.cs">
       <DependentUpon>NewMainPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Players\BasePlayer.cs" />
     <Compile Include="Players\CountingPlayer.cs" />
     <Compile Include="Players\DefaultPlayer.cs" />
     <Compile Include="Game.cs" />

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace CribbageAI
 {
-    class RandomPlayer : BasePlayer
+    class RandomPlayer : Player
     {
 
         Random _random = new Random(DateTime.Now.Millisecond);

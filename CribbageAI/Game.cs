@@ -56,60 +56,23 @@ namespace CribbageAI
         
     }
 
-    public class PlayerState
-    {
-
-        List<Card> _crib = new List<Card>();
-        public List<Card> Hand { get; set; } = new List<Card>();
-        public List<Card> UncountedCards { get; set; } = new List<Card>();
-        public List<Card> Crib
-        {
-            get
-            {
-                return _crib;
-            }
-            set
-            {
-                _crib = new List<Card>();
-                _crib.AddRange(value);
-            }
-        }
-
-        public int Score { get; set; } = 0;
-        public int CountPoints { get; set; } = 0; // number of points gained by counting
-        public int HandPoints { get; set; } = 0;
-        public int CribPoints { get; set; } = 0;
-
-        public int CribCount { get; set; } = 0;
-        public int HandCount { get; set; } = 0;
-        public int CountingSessions { get; set; } = 0;
-
-        public IPlayer IPlayer { get; set; } = null;
-        public override string ToString()
-        {
-            return String.Format($"[{IPlayer?.Description}].Score:{Score}");
-
-        }
-
-
-    }
-
+  
     class Game
     {
         //
         //  these are what we are initialized with and shouldn't change after being set
-        PlayerState _playerTwo = null;
-        PlayerState _playerOne = null;
+        Player _playerTwo = null;
+        Player _playerOne = null;
 
         //
         //  these toggle back and forth 
-        PlayerState _dealer = null;
-        PlayerState _nondealer = null;
+        Player _dealer = null;
+        Player _nondealer = null;
 
         //
         // these keep track of whose turn it is to play a card during counting
-        PlayerState _currentCountPlayer = null;
-        PlayerState _nextCountPlayer = null;
+        Player _currentCountPlayer = null;
+        Player _nextCountPlayer = null;
 
         int _gameID = -1;
         GameState _state = GameState.Uninitialized;
@@ -121,7 +84,7 @@ namespace CribbageAI
         private static int _deckShuffleSeed = Environment.TickCount;
         Logger _log = null;
 
-        public PlayerState PlayerOne
+        public Player PlayerOne
         {
             get
             {
@@ -129,7 +92,7 @@ namespace CribbageAI
             }
         }
 
-        public PlayerState PlayerTwo
+        public Player PlayerTwo
         {
             get
             {
@@ -137,26 +100,14 @@ namespace CribbageAI
             }
         }
         
-        public Game(int gameID,  IPlayer player1, IPlayer player2, bool player1Deals)
+        public Game(int gameID, Player player1, Player player2, bool player1Deals)
         {
             _gameID = gameID;
+
+            _playerOne = player1;
+            _playerTwo = player2;
+
             
-            _playerOne = new PlayerState
-            {
-                Score = 0,
-                IPlayer = player1,               
-
-            };
-            player1.PlayerName = PlayerName.PlayerOne;
-
-            _playerTwo = new PlayerState
-            {
-                Score = 0,
-                IPlayer = player2,
-
-            };
-
-            player2.PlayerName = PlayerName.PlayerTwo;
 
 
             if (player1Deals)
@@ -182,7 +133,7 @@ namespace CribbageAI
 
         }
 
-        public PlayerState Winner
+        public Player Winner
         {
             get
             {
@@ -208,19 +159,19 @@ namespace CribbageAI
         }
 
 
-        private void SwapPlayers(ref PlayerState o1, ref PlayerState o2)
+        private void SwapPlayers(ref Player o1, ref Player o2)
         {
-            PlayerState temp = o1;
+            Player temp = o1;
             o1 = o2;
             o2 = temp;
         }
 
-        public Task<PlayerState> StartAsync()
+        public Task<Player> StartAsync()
         {
             return Task.Run(() => PlayGame());
         }
 
-        public async Task<PlayerState> PlayGame()
+        public async Task<Player> PlayGame()
         {
             
             while (_dealer.Score < 121 && _playerTwo.Score < 121)
@@ -246,7 +197,7 @@ namespace CribbageAI
                         break;
                     case GameState.Count:
                         {
-                            PlayerState ret = await DoCount();
+                            Player ret = await DoCount();
                             if (ret != null)
                                 return ret;
 
@@ -255,7 +206,7 @@ namespace CribbageAI
                         break;
                     case GameState.ScoreHand:
                         {
-                            PlayerState ret = await DoScoreHand();
+                            Player ret = await DoScoreHand();
                             if (ret != null)
                                 return ret;
                         }
@@ -285,21 +236,21 @@ namespace CribbageAI
             return null;
         }
 
-        private async Task<PlayerState> DoScoreHand()
+        private async Task<Player> DoScoreHand()
         {
             int score = 0;
 
-            await LogLine(_nondealer.IPlayer.PlayerName, LogType.ScoreHand, $"{Card.CardsToString(_nondealer.Hand)} Shared: {_sharedCard}");
+            await LogLine(_nondealer.PlayerName, LogType.ScoreHand, $"{Card.CardsToString(_nondealer.Hand)} Shared: {_sharedCard}");
             score = CardScoring.ScoreHand(_nondealer.Hand, _sharedCard, HandType.Regular);
             _nondealer.HandCount++;
             if (await AddScore(_nondealer, score, ScoreType.Hand)) return _nondealer;  // has side effects...                        
 
-            await LogLine(_dealer.IPlayer.PlayerName, LogType.ScoreHand, $"{Card.CardsToString(_dealer.Hand)} Shared: {_sharedCard}");
+            await LogLine(_dealer.PlayerName, LogType.ScoreHand, $"{Card.CardsToString(_dealer.Hand)} Shared: {_sharedCard}");
             score = CardScoring.ScoreHand(_dealer.Hand, _sharedCard, HandType.Regular);
             _dealer.HandCount++;
             if (await AddScore(_dealer, score, ScoreType.Hand)) return _dealer;  // has side effects...      
 
-            await LogLine(_dealer.IPlayer.PlayerName, LogType.ScoreCrib, $"{Card.CardsToString(_dealer.Crib)} Shared: {_sharedCard}");
+            await LogLine(_dealer.PlayerName, LogType.ScoreCrib, $"{Card.CardsToString(_dealer.Crib)} Shared: {_sharedCard}");
             score = CardScoring.ScoreHand(_dealer.Crib, _sharedCard, HandType.Crib);
             _dealer.CribCount++;
             if (await AddScore(_dealer, score, ScoreType.Crib)) return _dealer;  // has side effects...            
@@ -307,7 +258,7 @@ namespace CribbageAI
             return null;
         }
 
-        private async Task<PlayerState> DoCount()
+        private async Task<Player> DoCount()
         {
             List<Card> playedCards = new List<Card>();
             _dealer.UncountedCards.Clear();
@@ -323,7 +274,7 @@ namespace CribbageAI
             _nondealer.CountingSessions++;
             while (_currentCountPlayer.UncountedCards.Count > 0 || _nextCountPlayer.UncountedCards.Count > 0)
             {
-                Card card = _currentCountPlayer.IPlayer.GetCountCard(playedCards, _currentCountPlayer.UncountedCards, currentCount);
+                Card card = _currentCountPlayer.GetCountCard(playedCards, _currentCountPlayer.UncountedCards, currentCount);
 
                 if (card != null)
                 {
@@ -367,7 +318,7 @@ namespace CribbageAI
                         // when a player can't go in counting phase, the other player gets to keep playing until they too can't go. 
                         // The terminating conditions are the player returns a null card or the count lands on 31
 
-                        card = _currentCountPlayer.IPlayer.GetCountCard(playedCards, _currentCountPlayer.UncountedCards, currentCount);
+                        card = _currentCountPlayer.GetCountCard(playedCards, _currentCountPlayer.UncountedCards, currentCount);
 
                         if (card != null)
                         {
@@ -426,16 +377,16 @@ namespace CribbageAI
         {
             _dealer.Crib.Clear();
             _nondealer.Crib.Clear();
-            List<Card> crib = _dealer.IPlayer.SelectCribCards(_dealer.Hand, true);
+            List<Card> crib = _dealer.SelectCribCards(_dealer.Hand, true);
             _dealer.Hand.Remove(crib[0]);
             _dealer.Hand.Remove(crib[1]);
             _dealer.Crib.AddRange(crib);
-            await LogLine(_dealer.IPlayer.PlayerName, LogType.DealerCrib, Card.CardsToString(crib));
+            await LogLine(_dealer.PlayerName, LogType.DealerCrib, Card.CardsToString(crib));
 
-            crib = _nondealer.IPlayer.SelectCribCards(_nondealer.Hand, false);
+            crib = _nondealer.SelectCribCards(_nondealer.Hand, false);
             _nondealer.Hand.Remove(crib[0]);
             _nondealer.Hand.Remove(crib[1]);
-            await LogLine(_nondealer.IPlayer.PlayerName, LogType.NonDealerHand, Card.CardsToString(crib));
+            await LogLine(_nondealer.PlayerName, LogType.NonDealerHand, Card.CardsToString(crib));
 
             _dealer.Crib.AddRange(crib);
 
@@ -466,22 +417,22 @@ namespace CribbageAI
                 _sharedCard = cards[12];
                 _sharedCard.Owner = null;
 
-               await LogLine(_dealer.IPlayer.PlayerName, LogType.DealerHand, $"{Card.CardsToString(_dealer.Hand)}");
-               await LogLine(_nondealer.IPlayer.PlayerName, LogType.NonDealerHand, $"{Card.CardsToString(_nondealer.Hand)}");
+               await LogLine(_dealer.PlayerName, LogType.DealerHand, $"{Card.CardsToString(_dealer.Hand)}");
+               await LogLine(_nondealer.PlayerName, LogType.NonDealerHand, $"{Card.CardsToString(_nondealer.Hand)}");
                await LogLine(PlayerName.None, LogType.SharedCard, $"{_sharedCard.ToString()}");
                 
                 
             }
         }
 
-        private async Task<bool> AddScore(PlayerState player, int score, ScoreType scoreType)
+        private async Task<bool> AddScore(Player player, int score, ScoreType scoreType)
         {
             if (score == 0)
                 return false;
 
             player.Score += score; //can and is often 0        
-            await LogLine(player.IPlayer.PlayerName, LogType.AddScore, $"{score}");
-            await LogLine(player.IPlayer.PlayerName, LogType.CurrentScore, $"PlayerOne: {_playerOne.Score} PlayerTwo: {_playerTwo.Score}");
+            await LogLine(player.PlayerName, LogType.AddScore, $"{score}");
+            await LogLine(player.PlayerName, LogType.CurrentScore, $"PlayerOne: {_playerOne.Score} PlayerTwo: {_playerTwo.Score}");
             switch (scoreType)
             {
                 case ScoreType.Hand:
@@ -499,21 +450,21 @@ namespace CribbageAI
             if (player.Score > 120)
             {
                 player.Score = 121;
-                player.IPlayer.Winner = true;
-                await LogLine(player.IPlayer.PlayerName, LogType.Winner, $"Player1: {_playerOne.Score} vs Player2: {_playerTwo.Score}");
+                player.Winner = true;
+                await LogLine(player.PlayerName, LogType.Winner, $"Player1: {_playerOne.Score} vs Player2: {_playerTwo.Score}");
                 return true;
             }
             return false;
         }
 
-        private async Task<int> ScoreCountedCard(PlayerState currentTurn, List<Card> playedCards, Card card, int currentCount)
+        private async Task<int> ScoreCountedCard(Player currentTurn, List<Card> playedCards, Card card, int currentCount)
         {
 
             int score = CardScoring.ScoreCountingCardsPlayed(playedCards, card, currentCount);
             if (score != -1)
             {
-                await LogLine(currentTurn.IPlayer.PlayerName, LogType.PlayCountCard, $"{card}");
-                await LogLine(currentTurn.IPlayer.PlayerName, LogType.Count, $"{currentCount + card.Value}");
+                await LogLine(currentTurn.PlayerName, LogType.PlayCountCard, $"{card}");
+                await LogLine(currentTurn.PlayerName, LogType.Count, $"{currentCount + card.Value}");
                 await AddScore(currentTurn, score, ScoreType.Count);
 
                 // mark the card as counted
@@ -527,7 +478,7 @@ namespace CribbageAI
 
         public double AverageScore(PlayerName name, ScoreType type)
         {
-            PlayerState state = _playerOne;
+            Player state = _playerOne;
             if (name == PlayerName.PlayerTwo)
             {
                 state = _playerTwo;
